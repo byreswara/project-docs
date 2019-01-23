@@ -1,0 +1,29 @@
+timestamps {
+properties([gitLabConnection('GitLab')])    
+node ('windows'){
+
+ws("D:\\jenkins\\workspace\\postman") {
+
+stage('Checkout') {
+    gitlabCommitStatus(name: 'Checkout') {
+        checkout scm
+    }
+         }
+
+	stage ('Test_Postman - Build') {
+ 			
+bat """ 
+newman run GET Collection.postman_collection.json --disable-unicode  --insecure --reporters cli,html --reporter-html-export  Postman_Report${BUILD_ID}.html 
+ """ 
+	}
+	
+	stage ('Test_Postman - Post Build') {
+	
+	publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: '', reportFiles: 'Postman_Report${BUILD_ID}.html', reportName: 'API Testing Report', reportTitles: 'API Testing Report'])
+	
+	emailext attachmentsPattern: 'Postman_Report${BUILD_ID}.html', body: 'The Jenkin Job URL is $BUILD_URL', subject: 'Postman report', to: 'Devaraja.Somaiah@lloydsbanking.com'
+	
+	}
+}
+}
+}

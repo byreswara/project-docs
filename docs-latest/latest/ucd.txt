@@ -1,0 +1,17 @@
+DIRECTORY=${p:lbg.t24.bcon.customFiles.directory}
+TMPDIR=${p:lbg.t24.bcon.customFiles.tmp.directory}
+
+#remove contents of tmpdir from prev deployment
+if [ -d $TMPDIR ]; then
+  rm -Rf $TMPDIR
+fi
+
+#Create target dir if it donot exist along with tmp dir to extract becon zip
+if [ ! -d $DIRECTORY ]; then
+  mkdir -p $DIRECTORY
+fi
+
+if [ ! -d $TMPDIR ]; then
+  mkdir -p $TMPDIR
+  echo "created $TMPDIR"
+fi

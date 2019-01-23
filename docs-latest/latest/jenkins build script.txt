@@ -1,0 +1,59 @@
+export JAVA_HOME=/usr/lib/jvm/java-1.8.0
+workspace=$PWD
+export PATH=$PATH:/opt/urbancode/ibm-ucdagent/opt/udclient/
+comp_name="Retail_OceanT24_CustomFiles_Bcon"
+auth="08ba7e27-c3b3-49b5-8a01-8576d5d744fe"
+
+CUR_DATE=$(date +"%d-%m-%y")
+version_id=${BUILD_NUMBER}.${CUR_DATE}
+
+#remove previous downloads
+rm -rf /apps/jenkins2/tmp/Bcon/bcon.zip
+
+# Download && copy ear / war file to /needy/dir ( eg ) with curl etc.. from Nexus
+wget -r --no-parent --reject="index.html*" -q -nd http://10.59.151.120:8081/nexus/content/repositories/releases/$(date +"%d-%m-%y")/com/lbg/ocean/Bcon/ -P /apps/jenkins2/tmp/Bcon/bcon
+
+cd /apps/jenkins2/tmp/Bcon ; zip -u bcon.zip bcon/*.gz ; rm -rf bcon ; cd -
+
+#Create version for the component
+/opt/urbancode/ibm-ucdagent/opt/udclient/udclient -weburl https://ucd.intranet.group -authtoken $auth createVersion -component $comp_name -name $version_id -description $comp_name
+echo 'Successfully executed target createVersion'
+
+#Upload version files for the component
+/opt/urbancode/ibm-ucdagent/opt/udclient/udclient -weburl https://ucd.intranet.group -authtoken $auth addVersionFiles -component $comp_name -version $version_id -base "/apps/jenkins2/tmp/Bcon"
+echo 'Successfully executed target addVersionFiles'
+
+#deploy in dev environment
+echo -e "{" > req.thirdparty.json
+echo -e '"application": "Retail - OceanT24",' >> req.thirdparty.json
+echo -e '"description": "Deploying thirdparty bcon files through jenkins on to dev environment",' >> req.thirdparty.json
+echo -e '"applicationProcess": "Ocean - Deploy bcon_files",' >> req.thirdparty.json
+echo -e '"environment": "ND-85DTn_A190 Ocean DevTst11",' >> req.thirdparty.json
+echo -e '"onlyChanged": "false",' >> req.thirdparty.json
+echo -e '"versions": [' >> req.thirdparty.json
+echo -e "{" >> req.thirdparty.json
+echo -e '"version": "latest",' >> req.thirdparty.json
+echo -e '"component": "Retail_OceanT24_CustomFiles_Bcon"' >> req.thirdparty.json
+echo -e "}]" >> req.thirdparty.json
+echo -e "}" >> req.thirdparty.json
+
+#invoke dev deployment and get the request id
+request_id=$( echo $(udclient -weburl https://ucd.intranet.group -authtoken $auth requestApplicationProcess - $workspace/req.thirdparty.json) |  jq ".requestId" | sed 's/"//g')
+echo 'Request id: '
+echo $request_id
+
+#function to check the request id status
+getProcessStatus(){
+udclient -weburl https://ucd.intranet.group -authtoken $auth getApplicationProcessRequestStatus -request $request_id > response.json 2>&1
+grep CLOSED response.json || exit_code=$?
+if [ "$exit_code" == "" ];then
+        udclient -weburl https://ucd.intranet.group -authtoken $auth getApplicationProcessExecution -request $request_id
+else
+        sleep 15; unset exit_code
+        getProcessStatus
+fi
+}
+
+#call function to check the request id status
+getProcessStatus
+rm -rf $workspace/req.thirdparty.json

@@ -1,0 +1,175 @@
+timestamps {
+properties([gitLabConnection('GitLab')])    
+node ('windows'){
+
+ws("D:\\jenkins\\workspace\\LBS_${BUILD_NUMBER}") {
+
+
+stage('Checkout') {
+    gitlabCommitStatus(name: 'Checkout') {
+        checkout scm
+    }
+         }
+
+stage ('Preparation') {
+    gitlabCommitStatus(name: 'Preparation') {
+                bat 'git log'
+                bat 'npm --version'
+                bat 'node --version'
+                bat 'nuget sources'
+                bat 'nuget restore'
+    }
+                      }
+
+stage ("Build Website") {
+    gitlabCommitStatus(name: 'Build Website') {
+                bat 'git config --system core.longpaths true'
+                withSonarQubeEnv('Sonar 6.7') {
+                bat "D:\\MSBuild.SonarQube.Runner-4.0\\MSBuild.SonarQube.Runner.exe begin /k:com.LexAutolease.LBS:master /v:1.0 /n:LexAutolease_LBS /d:sonar.host.url=http://cf-sonar.service.test.group/sonar/ /d:sonar.branch.name=$env.BRANCH_NAME"
+                bat """
+                    "C:\\Program Files (x86)\\MSBuild\\14.0\\Bin\\MSBuild.exe" $WORKSPACE\\Client\\Web\\LBSWebsite\\LBSWebsite.csproj /t:Clean;ResolveReferences;Rebuild;_CopyWebApplication /p:WarningLevel=2;Configuration=Release;WebProjectOutputDir=$WORKSPACE\\Deployment\\Published\\Website;OutDir=$WORKSPACE\\Deployment\\Published\\Website\\bin
+                    """
+                }
+
+    }
+                                           
+                        }                    
+                                        
+stage ('Build Service') {
+    gitlabCommitStatus(name: 'Build Service') {
+
+                bat """
+                    "C:\\Program Files (x86)\\MSBuild\\14.0\\Bin\\MSBuild.exe"  $WORKSPACE\\Services\\LBSWCFSrv\\LBSWCFSrv.csproj /t:Clean;ResolveReferences;Rebuild;Publish /p:WarningLevel=2;Configuration=Release;WebProjectOutputDir=$WORKSPACE\\Deployment\\Published\\Service;OutDir=$WORKSPACE\\Deployment\\Published\\Service\\Bin
+                    """
+    }
+                        }
+
+stage ('Sonar Results') {
+    gitlabCommitStatus(name: 'Sonar Results') {
+ 	            bat "D:\\MSBuild.SonarQube.Runner-4.0\\MSBuild.SonarQube.Runner.exe end"
+	            bat """copy /y $WORKSPACE\\Services\\LBSWCFSrv\\*.svc $WORKSPACE\\Deployment\\Published\\Service"""
+    }
+	                        }
+
+stage ('Unit Tests') {
+    gitlabCommitStatus(name: 'Unit Tests') {
+ 	            echo "You have 0 Unit tests!"
+    }
+	                     }
+
+ 	            
+stage ('Package'){
+    gitlabCommitStatus(name: 'Package') {
+                echo "Packaging Website & Service!"
+                
+                bat """
+                    robocopy $WORKSPACE\\Deployment\\Published\\Service $WORKSPACE\\Deployment\\Packages\\SERVICE_LBS_PACKAGE_ /s
+                    copy $WORKSPACE\\Services\\LBSWCFSrv\\configs\\Web.config.release $WORKSPACE\\Deployment\\Packages\\SERVICE_LBS_PACKAGE_\\web.config
+                    copy $WORKSPACE\\Services\\LBSWCFSrv\\ServerHealth.htm $WORKSPACE\\Deployment\\Packages\\SERVICE_LBS_PACKAGE_
+
+                    robocopy $WORKSPACE\\Deployment\\Published\\Website $WORKSPACE\\Deployment\\Packages\\WEBSITE_LBS_PACKAGE_ /s
+                    copy $WORKSPACE\\Deployment\\Published\\Website\\configs\\Web.config.release $WORKSPACE\\Deployment\\Packages\\WEBSITE_LBS_PACKAGE_\\web.config
+
+                    "C:\\Program Files\\7-zip\\7za.exe" a SERVICE_LBS_PACKAGE_.zip $WORKSPACE\\Deployment\\Packages\\SERVICE_LBS_PACKAGE_\\*
+                    "C:\\Program Files\\7-zip\\7za.exe" a WEBSITE_LBS_PACKAGE_.zip $WORKSPACE\\Deployment\\Packages\\WEBSITE_LBS_PACKAGE_\\*
+
+
+                """
+    }
+                }
+stage('Publish to UC') {
+if (env.BRANCH_NAME.contains("develop") || env.BRANCH_NAME.contains("release") || env.BRANCH_NAME.contains("master")) {
+gitlabCommitStatus(name: 'Publish to UC') {
+        step([$class: 'UCDeployPublisher',
+            siteName: 'production-lex',
+            component: [
+                $class: 'com.urbancode.jenkins.plugins.ucdeploy.VersionHelper$VersionBlock',
+                componentName: 'LexAutolease_Website_LBS',
+               
+            delivery: [
+                $class: 'com.urbancode.jenkins.plugins.ucdeploy.DeliveryHelper$Push',
+                componentName: 'LexAutolease_Website_LBS',
+                pushVersion: "$env.BRANCH_NAME.$BUILD_NUMBER",
+                baseDir: "$WORKSPACE/",
+                fileIncludePatterns: 'WEBSITE_LBS_PACKAGE_.zip',
+                fileExcludePatterns: '',
+                pushDescription: 'Pushed from Jenkins',
+                pushIncremental: false
+            ]
+        ],
+        
+        ])
+
+
+
+        step([$class: 'UCDeployPublisher',
+            siteName: 'production-lex',
+            component: [
+                $class: 'com.urbancode.jenkins.plugins.ucdeploy.VersionHelper$VersionBlock',
+                componentName: 'LexAutolease_Service_LBS',
+               
+            delivery: [
+                $class: 'com.urbancode.jenkins.plugins.ucdeploy.DeliveryHelper$Push',
+                componentName: 'LexAutolease_Service_LBS',
+                pushVersion: "$env.BRANCH_NAME.$BUILD_NUMBER",
+                baseDir: "$WORKSPACE/",
+                fileIncludePatterns: 'SERVICE_LBS_PACKAGE_.zip',
+                fileExcludePatterns: '',
+                pushDescription: 'Pushed from Jenkins',
+                pushIncremental: false
+            ]
+        ],
+        
+        ])
+    }
+}
+}
+
+
+stage('Auto Deploy - DEV2') {
+		gitlabCommitStatus(name: 'Auto Deploy') {
+  		    if (env.BRANCH_NAME == 'develop') {
+
+
+            step([ $class: 'UCDeployPublisher', 
+            siteName: 'production-lex', 
+            deploy: [ $class: 'com.urbancode.jenkins.plugins.ucdeploy.DeployHelper$DeployBlock', 
+            deployApp: 'LexAutolease - Website B2C', 
+            deployEnv: 'DEV2', 
+            deployProc: 'Deploy Website', 
+            deployVersions: "LexAutolease_Website_LBS:$env.BRANCH_NAME.$BUILD_NUMBER", 
+            deployOnlyChanged: false ] 
+            ])
+                        
+            step([$class: 'UCDeployPublisher', 
+            siteName: 'production-lex', 
+            deploy: [ $class: 'com.urbancode.jenkins.plugins.ucdeploy.DeployHelper$DeployBlock', 
+            deployApp: 'LexAutolease - Website B2C', 
+            deployEnv: 'DEV2', 
+            deployProc: 'Deploy Website', 
+            deployVersions: "LexAutolease_Service_LBS:$env.BRANCH_NAME.$BUILD_NUMBER", 
+            deployOnlyChanged: false ] ])
+	
+   
+            }
+      }
+}
+
+stage ('Funtional Tests') {
+    gitlabCommitStatus(name: 'Functional Tests') {
+ 	            echo "Functional test to be run against DEV2. You have 0 functional tests!"
+    }
+ 	            }
+
+
+
+
+
+ cleanWs()   
+
+}
+
+                        
+    } 
+    }
+    
