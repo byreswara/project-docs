@@ -1,0 +1,75 @@
+#!/bin/bash
+M2_HOME=~/.m2
+USER_NAME=esjkadm100
+FILE_NAME=$1
+NEXUS_URL=https://arm104-eiffel004.lmera.ericsson.se:8443/nexus/content/repositories/eniqs-public
+NEXUS_REPO_ID=assure-releases
+ARTIFACT_GROUP_ID=com.ericsson.eniq
+ARTIFACT_VERSION=stats
+ARTIFACT_ID=NMI
+
+#creating settings.xml file and copying encrypted master password
+setting_security_file () {
+cat <<EOF > $M2_HOME/settings-security.xml
+<settingsSecurity>
+  <master>{3g2ExFC9KWYH8iAXowQZQOdUBL7loY90Zz4ROmh9Zhw=}</master>
+</settingsSecurity>
+EOF
+}
+
+#creating settings-security.xml file and copying username and encrypted password
+setting_file () {
+cat <<EOF > $M2_HOME/settings.xml
+<?xml version="1.0"?>
+<settings>
+  <servers>
+     <server>
+        <id>$NEXUS_REPO_ID</id>
+        <username>$USER_NAME</username>
+        <password>{SFSxjSfrUUkHDjXvDFwMb8mRKBk4abJHjk9WRtnoWC4=}</password>
+    </server>
+  </servers>
+</settings>
+EOF
+}
+
+#ERROR MESSAGE
+error_msg () {
+echo ======================================================
+echo PLEASE ADD BELOW LINES IN YOUR ~/.m2/settings.xml FILE
+echo                THEN RE-RUN SCRIPT
+echo ======================================================
+echo "<settings>"
+echo  "<servers>"
+echo   " <server>"
+echo    "   <id>$NEXUS_REPO_ID</id>"
+echo     "  <username>$USER_NAME</username>"
+echo      " <password>{SFSxjSfrUUkHDjXvDFwMb8mRKBk4abJHjk9WRtnoWC4=}</password>"
+echo   "</server>"
+echo "</servers>"
+echo "</settings>"
+}
+
+#maven command to upload artifacts to nexus
+maven_cmd () {
+echo /usr/bin/mvn -B deploy:deploy-file -Durl=$NEXUS_URL -DrepositoryId=$NEXUS_REPO_ID -DgroupId=$ARTIFACT_GROUP_ID -Dversion=$ARTIFACT_VERSION -DartifactId=$ARTIFACT_ID -Dfile=$FILE_NAME
+}
+
+if [[ ! -f $M2_HOME/settings.xml || ! -f $M2_HOME/settings-security.xml ]];
+then
+setting_file
+setting_security_file
+maven_cmd
+   elif grep -wq "$USER_NAME" $M2_HOME/settings.xml ;
+   then
+      if  grep -wq master  $M2_HOME/settings-security.xml ;
+       then
+          maven_cmd
+       else
+         setting_security_file
+         maven_cmd
+      fi
+   else
+    error_msg
+    setting_security_file
+fi
