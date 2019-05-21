@@ -1,12 +1,20 @@
 #!/bin/bash
 M2_HOME=~/.m2
+MVN_PATH=/usr/bin/mvn
 USER_NAME=esjkadm100
-FILE_NAME=$1
 NEXUS_URL=https://arm104-eiffel004.lmera.ericsson.se:8443/nexus/content/repositories/eniqs-public
 NEXUS_REPO_ID=assure-releases
 ARTIFACT_GROUP_ID=com.ericsson.eniq
 ARTIFACT_VERSION=stats
 ARTIFACT_ID=NMI
+
+#input
+if [ $# -lt 1 ] ; then
+        echo "Usage: $0 <File Name>"
+        exit 100
+else
+        FILE_NAME=$1
+fi
 
 #creating settings.xml file and copying encrypted master password
 setting_security_file () {
@@ -52,7 +60,7 @@ echo "</settings>"
 
 #maven command to upload artifacts to nexus
 maven_cmd () {
-echo /usr/bin/mvn -B deploy:deploy-file -Durl=$NEXUS_URL -DrepositoryId=$NEXUS_REPO_ID -DgroupId=$ARTIFACT_GROUP_ID -Dversion=$ARTIFACT_VERSION -DartifactId=$ARTIFACT_ID -Dfile=$FILE_NAME
+echo $MVN_PATH -B deploy:deploy-file -Durl=$NEXUS_URL -DrepositoryId=$NEXUS_REPO_ID -DgroupId=$ARTIFACT_GROUP_ID -Dversion=$ARTIFACT_VERSION -DartifactId=$ARTIFACT_ID -Dfile=$FILE_NAME
 }
 
 if [[ ! -f $M2_HOME/settings.xml || ! -f $M2_HOME/settings-security.xml ]];
