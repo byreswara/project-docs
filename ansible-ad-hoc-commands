@@ -1,0 +1,21 @@
+ansible all --list-hosts
+ansible all -m ping
+ansible all -a "ls -a /home/ansible"
+ansible all -a -s "cat /var/log/messages"
+ansible all -m setup
+ansible all -m setup -a 'filter=*ipv4*'
+ansible all -m copy -a "src=test.txt dest=/home/ansible/test.txt"
+ansible all -s -m user -a "name=test"
+ansible all -s -m user -a "name=test state=absent"
+install/Remove a package
+ansible all -s -m yum -a "pkg=httpd state=present"
+ansible all -s -m yum -a "pkg=httpd state=latest"
+ansible all -s -m yum -a "pkg=httpd state=absent"
+start/stop a service
+ansible all -s -m service -a "name=httpd state=started"
+ansible all -s -m service -a "name=httpd state=restarted"
+ansible all -s -m service -a "name=httpd state=stopped"
+PLAYBOOKS:
+1. Target Section -Define the hosts
+2. Variable section - Define variables
+3. Tasks Section - list of modules that we need to run, in an order
