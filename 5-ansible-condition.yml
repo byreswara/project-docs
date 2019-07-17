@@ -1,0 +1,28 @@
+ ansible all -m setup -a "filter=ansible_os_family"
+---
+- hosts: all
+  user: ansible
+  sudo: yes
+  connection: ssh
+  gather_facts: yes
+  tasks:
+   - nmae: install apache for debain
+     command: apt-get -y install apache2
+     when: ansible_os_family == "Debian"
+   - name: install apache for redhat
+     command: yum -y install httpd
+     when: ansible_os_family == "RedHat"
+     
+---
+- hosts: all
+  user: ansible
+  sudo: yes
+  connection: ssh
+  gather_facts: yes
+  tasks:
+   - nmae: install apache for debain
+     apt: name=apache2 state=present
+     when: ansible_os_family == "Debian"
+   - name: install apache for redhat
+     yum: name=httpd state=present
+     when: ansible_os_family == "RedHat"
