@@ -1,4 +1,4 @@
----
+--- #loop and conditional paly book
 - hosts: all
   user: ansible
   sudo: yes
