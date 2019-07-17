@@ -1,4 +1,4 @@
----
+--- # handler playbook
 - hosts: local
   user: ansible
   sudo: yes
