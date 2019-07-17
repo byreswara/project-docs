@@ -1,5 +1,5 @@
- ansible all -m setup -a "filter=ansible_os_family"
----
+# ansible all -m setup -a "filter=ansible_os_family"
+--- # conditional playbook
 - hosts: all
   user: ansible
   sudo: yes
@@ -12,8 +12,9 @@
    - name: install apache for redhat
      command: yum -y install httpd
      when: ansible_os_family == "RedHat"
-     
----
+ 
+ # another way    
+---# conditional playbook
 - hosts: all
   user: ansible
   sudo: yes
