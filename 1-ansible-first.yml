@@ -1,5 +1,5 @@
-ansible-playbook first.yml --check
----
+# ansible-playbook first.yml --check
+--- # first play book with 3 section (target, variable, tasks)
 - hosts: local
   user: ansible
   sudo: yes
