@@ -19,3 +19,21 @@ PLAYBOOKS:
 1. Target Section -Define the hosts
 2. Variable section - Define variables
 3. Tasks Section - list of modules that we need to run, in an order
+
+Vault:
+ansible allows you to keep sensitive data such as passwords or keys in encrypted files, rather than as plaintext in playbooks
+
+Creating a new Encrypted file
+--> ansible-vault create play.yml
+
+Edit the encrypted files
+--> ansible-vault edit play.yml
+
+change the password
+-->  ansible-vault rekey play.yml
+
+Remove/decrypt password
+--> ansible-vault decrypt play.yml
+
+Encrypt an existing file
+ --> ansible-vault encrypt play1.yml
