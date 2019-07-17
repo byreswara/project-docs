@@ -1,0 +1,11 @@
+---
+- hosts: all
+  user: ansible
+  sudo: yes
+  connection: ssh
+  gather_facts: no
+  tasks:
+   - name: install httpd on server
+     raw: ls -la /var > /home/ansible/var.log
+     run_once: true
+     delegate_to: localhost
