@@ -13,10 +13,11 @@
 #####################################################################################################
 
 M2_HOME=~/.m2
-MVN_PATH=/usr/bin/mvn
+MVN_PATH=/tmp/apache-maven-3.0.5/bin/mvn
 USER_NAME=nmiteam
 NEXUS_URL=https://arm104-eiffel004.lmera.ericsson.se:8443/nexus/content/repositories/assure-releases/
 NEXUS_REPO_ID=assure-releases
+FILE_PATH=$3
 ARTIFACT_VERSION=$2
 SHIPMENT=$1
 SCRIPT_NAME=$(basename $0)
@@ -68,14 +69,14 @@ SUCCESS(){
   local function_name="${FUNCNAME[1]}"
   local msg="$1"
   timeAndDate=`date`
-  echo "[$timeAndDate] [SUCCESS]  : $msg" | tee -a  $LOG_FILE
+  echo "[$timeAndDate] [SUCCESS]  : $msg" |& tee -a  $LOG_FILE
 }
 
 ERROR(){
   local function_name="${FUNCNAME[1]}"
   local msg="$1"
   timeAndDate=`date`
-  echo "[$timeAndDate] [ERROR]  : $msg" | tee -a  $LOG_FILE
+  echo "[$timeAndDate] [ERROR]  : $msg" |& tee -a  $LOG_FILE
 }
 
 EXIT(){
@@ -109,9 +110,11 @@ if [[ $# -ne 3 || ! -f $3 || $ARTIFACT_VERSION != R* ]] ;
   else
     ENTRY
     FILE_NAME=$(basename $3)
-    ARTIFACT_ID=${FILE_NAME%%.*}
+    ARTIFACT_ID=$(echo "$FILE_NAME" | sed 's/_R.*//' | sed 's/-R.*//')
+    ARTIFACT_ID=${ARTIFACT_ID//./_}
     CHECKSUM_LOG_FILE=$LOGPATH/$(date +%F).$ARTIFACT_ID.checksum
-    md5sum $FILE_NAME > $CHECKSUM_LOG_FILE
+    md5sum $FILE_PATH > $CHECKSUM_LOG_FILE
+    echo $ARTIFACT_GROUP_ID $ARTIFACT_ID $2 $3 > $LOGPATH/$(date +%F).outputfile.txt
 fi
 
 DEBUG "checksum calulated for $ARTIFACT_ID file"
@@ -157,6 +160,7 @@ DEBUG "$USER_NAME added to $M2_HOME/settings.xml file"
 #
 
 setting_security_file () {
+[ ! -d $M2_HOME ] &&  mkdir $M2_HOME
 cat <<EOF > $M2_HOME/settings-security.xml
 <settingsSecurity>
   <master>${MEP}</master>
@@ -175,6 +179,7 @@ DEBUG "$M2_HOME/settings-security.xml file created"
 
 setting_file () {
 DEBUG "$M2_HOME/settings.xml file  not found"
+[ ! -d $M2_HOME ] &&  mkdir $M2_HOME
 cat <<EOF > $M2_HOME/settings.xml
 <?xml version="1.0"?>
 <settings>
@@ -234,7 +239,8 @@ $MVN_PATH -version &>> $LOG_FILE
 if [ $? = 0 ] ;
   then
     INFO "$FILE_NAME is uploading..."
-    $MVN_PATH -B deploy:deploy-file -Durl=$NEXUS_URL -DrepositoryId=$NEXUS_REPO_ID -DgroupId=$ARTIFACT_GROUP_ID -Dversion=$ARTIFACT_VERSION -DartifactId=$ARTIFACT_ID  -Dfile=$FILE_NAME >> $LOG_FILE
+    $MVN_PATH -B deploy:deploy-file -Durl=$NEXUS_URL -DrepositoryId=$NEXUS_REPO_ID -DgroupId=$ARTIFACT_GROUP_ID -Dversion=$ARTIFACT_VERSION -DartifactId=$ARTIFACT_ID -Dpackaging=tar.gz -Dfile=$FILE_PATH >> $LOG_FILE
+    $MVN_PATH -B deploy:deploy-file -Durl=$NEXUS_URL -DrepositoryId=$NEXUS_REPO_ID -DgroupId=com.ericsson.eniq.stats.nmi -Dversion=$ARTIFACT_ID-$ARTIFACT_VERSION-$(date +%F) -DartifactId=nmi-artifact-info-files -Dfile=$LOGPATH/$(date +%F).outputfile.txt >> $LOG_FILE
   else
    ERROR "Please set environment variable for maven path to $MVN_PATH"
    EXIT
@@ -245,7 +251,7 @@ fi
 
 
 #####################################################################################################
-##                  DECLARING SCRIP FUNCTION END                                                  ##
+##                  DECLARING SCRIP FUNCTION END                                                   ##
 #####################################################################################################
 
 #Excution: If 2 files or not exist then it will create and upload artifact to nexus and maven log will save to $LOGPATH
