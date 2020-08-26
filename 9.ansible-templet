@@ -1,0 +1,30 @@
+- hosts: dev
+#  user: ansadm
+#  sudo: yes
+#  connection: ssh
+#  gather_facts: no
+  vars:
+    dbenvironment: 'development-mysql.dev.graymattertech.org'
+  tasks:
+    - name: app-config.conf file to /home/ansadm/app-config.conf
+      template:
+        src: /home/ansadm/ansible/app-config.conf
+        dest: /home/ansadm/app-config.conf
+        owner: ansadm
+        group: root
+        mode: '0644'
+- hosts: prod
+#  user: ansadm
+#  sudo: yes
+#  connection: ssh
+#  gather_facts: no
+  vars:
+    dbenvironment: 'production-mysql.graymattertech.org'
+  tasks:
+    - name: app-config.conf file to /home/ansadm/app-config.conf
+      template:
+        src: /home/ansadm/ansible/app-config.conf
+        dest: /home/ansadm/app-config.conf
+        owner: ansadm
+        group: root
+        mode: '0644'
