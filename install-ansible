@@ -12,5 +12,5 @@ Make sure /etc/ssh/sshd_config on the server contains PubkeyAuthentication yes.
 Remember to restart the sshd process on the server.
 
 vim /etc/ssh/sshd_config
-systemctl restart ssh.service
+service sshd restart
 
