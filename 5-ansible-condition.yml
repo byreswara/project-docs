@@ -27,3 +27,5 @@
    - name: install apache for redhat
      yum: name=httpd state=present
      when: ansible_os_family == "RedHat"
+
+https://stackoverflow.com/questions/61930486/how-to-use-host-variables-in-when-condition-in-ansible-playbook
